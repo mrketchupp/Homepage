@@ -9,9 +9,12 @@ Este documento distingue la implementación actual de las ideas futuras. No impl
 - Favoritos con alta y eliminación, buscadores Startpage, Ecosia, DuckDuckGo y Brave, fecha y estado de conexión.
 - Fondo de prueba con la imagen del usuario en `assets/background.jpg`, activado por defecto. Controles para alternar imagen/degradado, oscurecimiento 20–85 %, desenfoque 0–12 px, encuadre horizontal/vertical y restablecimiento; persistencia en `inicio.background.v1`.
 - Importación y exportación JSON local, con normalización de los elementos de widgets y ajustes opcionales del fondo compatibles con las copias existentes de versión 1. La clave de Holodex no se exporta.
-- Aplicación instalable con manifiesto y caché de recursos del mismo origen mediante service worker (`inicio-v3`), incluidos el módulo y la imagen del fondo. La primera visita requiere conexión; la caché depende del navegador.
+- Aplicación instalable con manifiesto y caché de recursos del mismo origen mediante service worker (`inicio-v4`), incluidos el módulo y la imagen del fondo. La primera visita requiere conexión; la caché depende del navegador.
 - RSS y Atom mediante AllOrigins, con conservación local de artículos y mensaje de error si falla una actualización.
 - Consulta de directos de YouTube de canales seleccionados mediante Holodex por canal y con paginación; aviso dentro de la página al detectar un directo nuevo durante una sesión abierta. Las peticiones usan un tiempo límite con `AbortController`.
+- Avatares de Holodex (`photo`) con perfiles locales `channelInfo` y TTL de 24 horas; miniaturas públicas de YouTube (`mqdefault.jpg`). No se requiere otra clave. La tira muestra hasta cinco talentos y acceso al resto, se oculta a alturas de 600 px o menos y la configuración conserva todos los nombres y avatares.
+- Identidad visual de Calliope en rosa, Korone en ámbar y Kronii en azul; paleta estable para otros. Círculo rojo con resplandor para directos activos, reloj para próximos y gris para datos guardados sin confirmar. Las etiquetas accesibles, las fechas y el movimiento reducido complementan los estados visuales. `visual.css` separa esta capa del estilo base.
+- Caché `inicio-images-v1` de hasta 60 imágenes públicas, limitada a hosts de YouTube/Google: `i.ytimg.com`, `yt3.ggpht.com` y `yt3.googleusercontent.com`. Las peticiones omiten credenciales; la API y las peticiones autenticadas no se guardan. Primera descarga con conexión; uso offline solo si las imágenes siguen guardadas. Si falla una miniatura se intenta el avatar; si falta la foto, iniciales o reproducción.
 - Enlace al conversor oficial de Mastercard.
 
 ## Verificaciones realizadas
@@ -24,6 +27,10 @@ Este documento distingue la implementación actual de las ideas futuras. No impl
 
 - En la revisión actual en Chromium: capturas del fondo; ocho favoritos en dos filas sin paginación; tamaños desde 320×568 hasta 1440×900, incluida orientación horizontal, con listas vacías y pobladas sin desbordamientos; controles del fondo, persistencia, exportación integrada e imagen disponible offline.
 
+## Validación de la revisión visual
+
+En Chromium se descargaron las fotos reales de los tres talentos y dos próximos directos de Calliope. Se verificaron avatares y alternativas guardadas offline, exclusión de la clave, ausencia de errores JavaScript, etiquetas accesibles, movimiento reducido y el círculo rojo en un caso simulado. Las miniaturas de YouTube están bloqueadas por el proxy del entorno; la alternativa al avatar funciona. La matriz de siete tamaños con perfiles y listas, desde 320×568 hasta escritorio y horizontal, no presentó scroll ni superposición. Los detalles, fecha y capturas están en [HOLODEX.md](HOLODEX.md).
+
 ## Pendiente de verificar
 
 - Probar la instalación y apertura offline, y la configuración como inicio o nueva pestaña, en Safari de macOS y Brave de iOS y Android. No asumir que todos permiten sustituir la nueva pestaña o conservan la caché indefinidamente.
@@ -35,7 +42,7 @@ Este documento distingue la implementación actual de las ideas futuras. No impl
 
 1. Permitir mostrar, ocultar y reordenar widgets; la versión actual muestra tarjetas fijas.
 2. Mejorar la gestión de marcadores: edición, agrupación y búsqueda. La versión actual permite añadirlos y eliminarlos.
-3. Mejorar la configuración y presentación de los talentos seguidos, incluidos posibles avatares o miniaturas, sin limitar futuras plataformas a YouTube en el diseño de datos. La agenda actual es textual y los enlaces de los directos abren YouTube en una pestaña nueva.
+3. Mejorar la configuración de los talentos y permitir ajustar sus colores si resulta necesario. Los avatares, miniaturas y nombres en configuración ya están implementados; los enlaces de los directos siguen abriendo YouTube en una pestaña nueva. Considerar futuras plataformas sin darlas por integradas.
 4. Evaluar una integración directa con Mastercard solo si se dispone del acceso autorizado a su API. Hasta entonces usar el enlace oficial, sin inventar tasas.
 5. Evaluar alternativas al proxy RSS público, sus implicaciones de privacidad y coste, y la necesidad de alojar un servicio propio.
 6. Si el usuario lo desea más adelante, estudiar sincronización automática; actualmente cada navegador guarda sus propios datos y se trasladan mediante archivos.
@@ -47,4 +54,4 @@ Las tareas, notas, temas configurables y notificaciones de fondo se mencionaron 
 - La imagen del fondo es un asset fijo; los controles ajustan su apariencia, pero aún no permiten elegir ni cargar otra imagen desde la interfaz.
 
 - La importación normaliza los elementos de widgets, pero las escrituras de favoritos, motor y widgets en `localStorage` aún no forman una operación transaccional. Un fallo de almacenamiento durante la importación puede dejar una copia aplicada parcialmente; conviene añadir validación previa de toda la copia y recuperación.
-- Holodex, AllOrigins y sus límites de servicio condicionan las actualizaciones; offline se consultan únicamente los datos guardados.
+- Holodex, AllOrigins y sus límites de servicio condicionan las actualizaciones; offline se consultan únicamente los datos guardados. Los estados en vivo pasan a guardados/sin verificar al renderizar sin conexión, con fallo de consulta o tras más de cinco minutos desde la última actualización. Las imágenes pueden faltar por red, restricciones, eliminación del vídeo o expulsión de la caché; sus alternativas no implican un nuevo estado del directo.

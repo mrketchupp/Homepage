@@ -131,11 +131,12 @@ function fitLayout() {
     bookmarkPageSize = pageSize; bookmarkColumns = columns; bookmarkRows = rows; renderBookmarks();
   }
   const height = $('#widget-deck').clientHeight;
-  const itemHeight = window.innerHeight <= 520 ? 60 : 78;
-  const reserved = window.innerHeight <= 520 ? 100 : 155;
+  const itemHeight = window.innerHeight <= 600 ? 50 : window.innerHeight <= 700 ? 66 : 80;
+  const reserved = window.innerHeight <= 520 ? 100 : window.innerHeight <= 600 ? 130 : 195;
   setWidgetPageSize(Math.floor((height - reserved) / itemHeight));
 }
 renderBookmarks();
+$('#widgets').addEventListener('widgets-rendered', fitLayout);
 const observer = new ResizeObserver(fitLayout); observer.observe($('.shell')); observer.observe($('#widget-deck'));
 fitLayout();
 $('#export').onclick = () => {
