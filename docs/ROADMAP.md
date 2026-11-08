@@ -4,19 +4,28 @@ Este documento distingue la implementación actual de las ideas futuras. No impl
 
 ## Implementado
 
-- Página estática adaptable con estética oscura inspirada en Liquid Glass, estados visuales y soporte de movimiento reducido.
+- Página estática adaptable con estética oscura inspirada en Liquid Glass, iconos SVG, estados visuales y soporte de movimiento reducido.
+- Vista principal sin scroll de página: tres widgets en escritorio, pestañas en pantallas pequeñas y paginación de favoritos y listas adaptada al espacio. La configuración abre modales que sí admiten scroll interno.
 - Favoritos con alta y eliminación, buscadores Startpage, Ecosia, DuckDuckGo y Brave, fecha y estado de conexión.
-- Importación y exportación JSON local. La clave de Holodex no se exporta.
+- Importación y exportación JSON local, con normalización de los elementos de widgets. La clave de Holodex no se exporta.
 - Aplicación instalable con manifiesto y caché de recursos del mismo origen mediante service worker. La primera visita requiere conexión; la caché depende del navegador.
 - RSS y Atom mediante AllOrigins, con conservación local de artículos y mensaje de error si falla una actualización.
-- Consulta de directos de YouTube de canales seleccionados mediante Holodex y aviso dentro de la página al detectar un directo nuevo durante una sesión abierta.
+- Consulta de directos de YouTube de canales seleccionados mediante Holodex por canal y con paginación; aviso dentro de la página al detectar un directo nuevo durante una sesión abierta. Las peticiones usan un tiempo límite con `AbortController`.
 - Enlace al conversor oficial de Mastercard.
+
+## Verificaciones realizadas
+
+- En Chromium: carga, persistencia de un favorito y reapertura offline tras instalar la caché.
+- En Chromium: normalización de widgets malformados, paginación de lecturas y apertura de configuración modal.
+- Holodex respondió HTTP 200 con una credencial real. También se probó el widget desde Chromium: cargó dos directos reales de un canal temporal de prueba y la exportación excluyó la clave. No se guardaron credenciales en el repositorio ni se eligieron talentos del usuario por defecto.
+
+- En Chromium: sin desbordamiento horizontal ni vertical, tanto vacío como con listas paginadas, a 1440×900, 1280×720, 820×1180, 390×844, 375×667, 320×568 y 844×390. Se comprobó que los elementos de las listas no se superponen al pie de las tarjetas, el cambio de pestañas y la paginación de favoritos.
 
 ## Pendiente de verificar
 
 - Probar la instalación y apertura offline, y la configuración como inicio o nueva pestaña, en Safari de macOS y Brave de iOS y Android. No asumir que todos permiten sustituir la nueva pestaña o conservan la caché indefinidamente.
 - Probar feeds RSS y Atom reales, incluidos errores parciales y contenido guardado offline, considerando la disponibilidad y privacidad del intermediario.
-- Probar la API de Holodex con una clave válida y canales seleccionados, los límites de consulta, la precisión de los resultados y los avisos al cambiar un directo a estado en vivo. Confirmar comportamiento de pestañas en segundo plano y al volver a estar visibles.
+- Probar Holodex con los talentos que seleccione el usuario y los avisos al cambiar un directo a estado en vivo. Confirmar comportamiento de pestañas en segundo plano y al volver a estar visibles.
 - Probar copias entre navegadores, así como la accesibilidad de teclado, lectores de pantalla y reducción de movimiento.
 
 ## Candidatos para próximas iteraciones
@@ -32,6 +41,5 @@ Las tareas, notas, temas configurables y notificaciones de fondo se mencionaron 
 
 ## Limitaciones técnicas conocidas
 
-- La consulta Holodex obtiene hasta 100 resultados generales y después filtra los canales elegidos; puede omitir directos si el conjunto supera ese límite. Investigar el filtrado por canal y la paginación antes de depender de una agenda completa.
-- La importación comprueba la estructura básica de los favoritos, pero no valida de forma exhaustiva cada elemento de los widgets ni es transaccional. Una copia dañada puede dejar datos inconsistentes; mejorar la validación y probar la recuperación.
-- Las consultas usan `AbortSignal.timeout`; comprobar su compatibilidad con las versiones de Safari y Brave objetivo y ofrecer una alternativa si es necesario.
+- La importación normaliza los elementos de widgets, pero las escrituras de favoritos, motor y widgets en `localStorage` aún no forman una operación transaccional. Un fallo de almacenamiento durante la importación puede dejar una copia aplicada parcialmente; conviene añadir validación previa de toda la copia y recuperación.
+- Holodex, AllOrigins y sus límites de servicio condicionan las actualizaciones; offline se consultan únicamente los datos guardados.
