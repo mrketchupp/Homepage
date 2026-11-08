@@ -1,4 +1,6 @@
 const KEY = 'homepage.widgets.v1';
+const DIRECTORY_KEY = 'inicio.holodex-directory.v1';
+const DIRECTORY_TTL = 86400000;
 const defaults = () => ({ feeds: [], articles: [], rssUpdated: null, channels: [], channelInfo: {}, streams: [], liveUpdated: null, holodexKey: '' });
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 const text = (value, limit = 500) => typeof value === 'string' ? value.slice(0, limit) : '';
@@ -43,8 +45,95 @@ let rssStatus = '';
 let liveStatus = '';
 let busyRss = false;
 let busyLive = false;
+let liveRefreshPending = false;
+let rssRefreshPending = false;
 const profileRequests = new Set();
 const failedThumbnails = new Set();
+function normalizeDirectory(value) {
+  const records = Array.isArray(value?.channels) ? value.channels : [];
+  return {
+    updated: validDate(value?.updated),
+    channels: [...new Map(records.filter(channel => channel && channelPattern.test(channel.id)).slice(0, 2000).map(channel => {
+      const profile = {
+        id: channel.id,
+        name: text(channel.name, 150),
+        englishName: text(channel.englishName || channel.english_name, 150),
+        nativeName: text(channel.nativeName || channel.native_name, 150),
+        handles: (Array.isArray(channel.handles) ? channel.handles : [channel.yt_handle, channel.handle, channel.twitter]).filter(handle => typeof handle === 'string').slice(0, 10).map(handle => text(handle, 100)),
+        photo: safeImage(channel.photo)
+      };
+      return [profile.id, profile];
+    })).values()]
+  };
+}
+function loadDirectory() {
+  try { return normalizeDirectory(JSON.parse(localStorage.getItem(DIRECTORY_KEY))); } catch { return normalizeDirectory(null); }
+}
+let directory = loadDirectory();
+let directoryBusy = false;
+let directoryError = '';
+let talentQuery = '';
+let talentSearchPage = 0;
+let talentSearchTimer;
+function saveDirectory() { try { localStorage.setItem(DIRECTORY_KEY, JSON.stringify(directory)); } catch { /* The in-memory directory remains usable. */ } }
+function searchText(value) { return String(value || '').normalize('NFKD').replace(/\p{M}/gu, '').toLocaleLowerCase().trim(); }
+function directoryName(channel) { return channel.englishName || channel.name || channel.nativeName || 'Canal de YouTube'; }
+function directoryMatches() {
+  const words = searchText(talentQuery).split(/\s+/).filter(Boolean);
+  return directory.channels.filter(channel => {
+    const haystack = searchText([channel.name, channel.englishName, channel.nativeName, ...channel.handles].join(' '));
+    return words.every(word => haystack.includes(word));
+  }).sort((a, b) => directoryName(a).localeCompare(directoryName(b), 'es'));
+}
+function searchAvatar(channel) {
+  const photo = safeImage(channel.photo || data.channelInfo[channel.id]?.photo);
+  return `<span class="talent-avatar ${photo ? '' : 'is-missing'}" style="--talent-color:${talentColor(channel.id)}">${photo ? `<img src="${esc(photo)}" alt="" width="36" height="36" loading="lazy" referrerpolicy="no-referrer">` : ''}<span class="avatar-fallback" aria-hidden="true">${esc(initials(directoryName(channel)))}</span></span>`;
+}
+function directoryStatus() {
+  if (directoryBusy) return directory.channels.length ? 'Actualizando catálogo de Holodex… Puedes buscar en la copia guardada.' : 'Cargando talentos de Holodex…';
+  if (directoryError) return directoryError + (directory.channels.length ? ' Puedes usar el catálogo guardado.' : '');
+  if (!navigator.onLine) return directory.channels.length ? 'Sin conexión · buscando en el catálogo guardado.' : 'Conecta una vez para descargar el catálogo de Holodex.';
+  if (!data.holodexKey) return directory.channels.length ? 'Catálogo guardado disponible. Añade tu clave para actualizarlo y consultar directos.' : 'Guarda tu clave de Holodex para buscar talentos por nombre.';
+  return directory.updated ? `Catálogo Hololive · actualizado ${formatDate(directory.updated)}` : 'Escribe el nombre del talento que quieres seguir.';
+}
+function renderSearchResults() {
+  if (!settings?.open || settingsType !== 'live') return;
+  const results = settings.querySelector('.talent-search-results');
+  const status = settings.querySelector('.talent-search-status');
+  if (!results || !status) return;
+  status.textContent = directoryStatus();
+  const matches = directoryMatches();
+  const count = Math.max(1, Math.ceil(matches.length / 6));
+  talentSearchPage = Math.max(0, Math.min(talentSearchPage, count - 1));
+  const visible = matches.slice(talentSearchPage * 6, (talentSearchPage + 1) * 6);
+  results.innerHTML = visible.length ? visible.map(channel => {
+    const following = data.channels.includes(channel.id);
+    return `<div class="talent-search-result" style="--talent-color:${talentColor(channel.id)}">${searchAvatar(channel)}<span class="talent-search-copy"><strong>${esc(directoryName(channel))}</strong><small>${esc(channel.name !== directoryName(channel) ? channel.name : 'Hololive · YouTube')}</small></span><button type="button" data-action="follow-talent" data-channel-id="${esc(channel.id)}" ${following ? 'disabled' : ''} aria-label="${following ? 'Ya sigues a' : 'Seguir a'} ${esc(directoryName(channel))}">${following ? 'Siguiendo' : 'Seguir'}</button></div>`;
+  }).join('') : `<p class="widget-help">${directory.channels.length && talentQuery.trim() ? 'No se encontraron talentos con ese nombre. Prueba otra parte de su nombre.' : directoryBusy ? 'El catálogo estará disponible en un momento.' : 'Todavía no hay talentos en el catálogo guardado.'}</p>`;
+  if (matches.length > 6) results.innerHTML += `<div class="talent-search-pager"><button type="button" data-action="search-page" data-delta="-1" ${talentSearchPage === 0 ? 'disabled' : ''} aria-label="Resultados anteriores">‹</button><span>${talentSearchPage + 1} / ${count}</span><button type="button" data-action="search-page" data-delta="1" ${talentSearchPage === count - 1 ? 'disabled' : ''} aria-label="Resultados siguientes">›</button></div>`;
+  const refresh = settings.querySelector('[data-action="refresh-directory"]');
+  if (refresh) refresh.disabled = directoryBusy || !navigator.onLine || !data.holodexKey;
+}
+async function ensureDirectory(force = false) {
+  if (directoryBusy || !navigator.onLine || !data.holodexKey) { renderSearchResults(); return; }
+  if (!force && directory.updated && Date.now() - Date.parse(directory.updated) < DIRECTORY_TTL) { renderSearchResults(); return; }
+  directoryBusy = true; directoryError = ''; renderSearchResults();
+  const channels = [];
+  try {
+    for (let offset = 0; offset < 2000; offset += 100) {
+      const query = new URLSearchParams({ type: 'vtuber', org: 'Hololive', limit: '100', offset: String(offset) });
+      const response = await request('https://holodex.net/api/v2/channels?' + query, { headers: { 'X-APIKEY': data.holodexKey } });
+      if (!response.ok) throw new Error(response.status === 401 || response.status === 403 ? 'No se pudo consultar el catálogo. Comprueba tu clave de Holodex.' : 'Holodex no pudo actualizar el catálogo.');
+      const page = await response.json();
+      if (!Array.isArray(page)) throw new Error('El catálogo de Holodex tiene un formato inesperado.');
+      channels.push(...page);
+      if (page.length < 100) break;
+    }
+    directory = normalizeDirectory({ channels, updated: new Date().toISOString() }); saveDirectory();
+  } catch (error) { directoryError = error.name === 'AbortError' ? 'Holodex tardó demasiado en responder.' : error.message || 'No se pudo actualizar el catálogo.'; }
+  finally { directoryBusy = false; renderSearchResults(); }
+}
+
 function persist() { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch { /* Keep this session usable if storage is full. */ } }
 export function exportWidgets() { const { holodexKey, ...backup } = data; return JSON.parse(JSON.stringify(backup)); }
 export function importWidgets(value) { data = { ...normalize(value), holodexKey: data.holodexKey }; pages.rss = pages.live = 0; persist(); render(); }
@@ -132,9 +221,20 @@ function render() {
 function renderSettings() {
   const rss = settingsType === 'rss';
   settings.innerHTML = `<div class="dialog-head"><div><span class="section-kicker">${rss ? 'TU LECTURA' : 'TUS TALENTOS'}</span><h2 id="widget-settings-title">${rss ? 'Gestionar feeds' : 'Configurar talentos'}</h2></div><button type="button" class="icon-button" data-action="close-settings" aria-label="Cerrar">×</button></div>
-    ${rss ? `<form data-form="feed"><label class="field">URL del feed RSS o Atom<input name="url" type="url" placeholder="https://ejemplo.com/feed.xml" required></label><button class="primary-button" type="submit">Añadir feed</button></form>${data.feeds.map((f, i) => `<div class="widget-manage"><span>${esc(f.url)}</span><button data-action="remove-feed" data-index="${i}" aria-label="Eliminar feed">×</button></div>`).join('')}<p class="widget-help">AllOrigins recibe la dirección de cada feed para actualizarlo. Usa feeds públicos. Las últimas lecturas quedan guardadas en este navegador.</p>` : `<form data-form="key"><label class="field">Clave API de Holodex<input name="key" type="password" value="${esc(data.holodexKey)}" autocomplete="off" placeholder="Tu clave API"></label><button class="primary-button" type="submit">Guardar clave</button></form><p class="widget-help">${data.holodexKey ? 'Clave guardada en este navegador.' : 'Añade tu clave para consultar los directos.'} Se envía únicamente a Holodex y no se incluye en la copia de seguridad. <a href="https://holodex.net/" target="_blank" rel="noopener noreferrer">Ir a Holodex</a>.</p><form data-form="channel"><label class="field">ID del canal de YouTube<input name="id" placeholder="UC…" pattern="UC[A-Za-z0-9_-]{22}" required></label><button class="primary-button" type="submit">Seguir canal</button></form>${data.channels.map((id, i) => `<div class="widget-manage talent-manage" style="--talent-color:${talentColor(id)}">${avatar(id, false)}<a href="https://www.youtube.com/channel/${id}" target="_blank" rel="noopener noreferrer"><span class="talent-manage-name">${esc(channelName(id))}</span><small>${esc(id)}</small></a><button data-action="remove-channel" data-index="${i}" aria-label="Dejar de seguir a ${esc(channelName(id))}">×</button></div>`).join('')}<p class="widget-help">Con la página visible se actualizan los directos cada dos minutos. Los avatares se consultan en Holodex y las miniaturas en YouTube; si no cargan, se muestran iniciales o un icono. Los datos offline se marcan como guardados.</p>`}`;
+    ${rss ? `<form data-form="feed"><label class="field">URL del feed RSS o Atom<input name="url" type="url" placeholder="https://ejemplo.com/feed.xml" required></label><button class="primary-button" type="submit">Añadir feed</button></form>${data.feeds.map((f, i) => `<div class="widget-manage"><span>${esc(f.url)}</span><button data-action="remove-feed" data-index="${i}" aria-label="Eliminar feed">×</button></div>`).join('')}<p class="widget-help">Pega la URL del feed RSS o Atom, no la portada del sitio. Ejemplo: https://www.nasa.gov/feed/. Se intenta leer directamente; si el sitio lo bloquea, AllOrigins recibe la dirección como intermediario. Usa feeds públicos. Las últimas lecturas quedan guardadas en este navegador.</p>` : `<form data-form="key"><label class="field">Clave API de Holodex<input name="key" type="password" value="${esc(data.holodexKey)}" autocomplete="off" placeholder="Tu clave API"></label><button class="primary-button" type="submit">Guardar clave</button></form><p class="widget-help">${data.holodexKey ? 'Clave guardada en este navegador.' : 'Añade tu clave para consultar los directos.'} Se envía únicamente a Holodex y no se incluye en la copia de seguridad. <a href="https://holodex.net/" target="_blank" rel="noopener noreferrer">Ir a Holodex</a>.</p><form class="talent-search-form" data-form="talent-search"><label class="field">Buscar talento en Holodex<input name="talent-query" type="search" value="${esc(talentQuery)}" placeholder="Calliope, Korone, Kronii…" autocomplete="off" aria-describedby="talent-search-status"></label><button type="button" data-action="refresh-directory">Actualizar catálogo</button></form><p class="widget-help talent-search-status" id="talent-search-status" role="status"></p><div class="talent-search-results" aria-label="Resultados de talentos"></div><details class="talent-advanced"><summary>Añadir por ID (avanzado)</summary><form data-form="channel"><label class="field">ID del canal de YouTube<input name="id" placeholder="UC…" pattern="UC[A-Za-z0-9_-]{22}" required></label><button type="submit">Seguir canal</button></form></details>${data.channels.map((id, i) => `<div class="widget-manage talent-manage" data-profile-id="${esc(id)}" style="--talent-color:${talentColor(id)}">${avatar(id, false)}<a href="https://www.youtube.com/channel/${id}" target="_blank" rel="noopener noreferrer"><span class="talent-manage-name">${esc(channelName(id))}</span><small>${esc(id)}</small></a><button data-action="remove-channel" data-index="${i}" aria-label="Dejar de seguir a ${esc(channelName(id))}">×</button></div>`).join('')}<p class="widget-help">Con la página visible se actualizan los directos cada dos minutos. Los avatares se consultan en Holodex y las miniaturas en YouTube; si no cargan, se muestran iniciales o un icono. Los datos offline se marcan como guardados.</p>`}`;
+  renderSearchResults();
 }
-export function openWidgetSettings(type) { if (!settings) return; settingsType = type === 'live' ? 'live' : 'rss'; renderSettings(); settings.showModal(); }
+function syncSettingsProfiles() {
+  renderSearchResults();
+  for (const row of settings.querySelectorAll('[data-profile-id]')) {
+    const id = row.dataset.profileId;
+    const previous = row.querySelector('.talent-avatar');
+    if (previous) previous.outerHTML = avatar(id, false);
+    const name = row.querySelector('.talent-manage-name');
+    if (name) name.textContent = channelName(id);
+  }
+}
+export function openWidgetSettings(type) { if (!settings) return; settingsType = type === 'live' ? 'live' : 'rss'; renderSettings(); settings.showModal(); if (settingsType === 'live') { renderSearchResults(); ensureDirectory(); } }
 async function request(url, options = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12000);
@@ -147,20 +247,35 @@ function refreshProfiles() {
     if (profileRequests.has(id) || (profile?.updated && Date.now() - Date.parse(profile.updated) < 86400000)) continue;
     profileRequests.add(id);
     request('https://holodex.net/api/v2/channels/' + id, { headers: { 'X-APIKEY': data.holodexKey } })
-      .then(async response => { if (!response.ok) throw new Error('profile'); const result = await response.json(); if (result.id !== id || !data.channels.includes(id)) return; data.channelInfo[id] = normalizeProfile({ name: result.english_name || result.name, photo: result.photo, updated: new Date().toISOString() }, id); persist(); render(); if (settings?.open && settingsType === 'live' && !settings.contains(document.activeElement)) renderSettings(); })
+      .then(async response => { if (!response.ok) throw new Error('profile'); const result = await response.json(); if (result.id !== id || !data.channels.includes(id)) return; data.channelInfo[id] = normalizeProfile({ name: result.english_name || result.name, photo: result.photo, updated: new Date().toISOString() }, id); persist(); render(); if (settings?.open && settingsType === 'live') syncSettingsProfiles(); })
       .catch(() => { /* Missing profiles fall back to channel initials without blocking the agenda. */ })
       .finally(() => profileRequests.delete(id));
   }
 }
+function parseFeed(body) {
+  const xml = new DOMParser().parseFromString(body, 'text/xml');
+  if (xml.querySelector('parsererror') || !['rss', 'feed', 'RDF'].includes(xml.documentElement?.localName)) throw new Error('La dirección no es un feed RSS o Atom válido.');
+  return xml;
+}
+async function fetchFeed(url) {
+  try {
+    // Prefer a direct public feed when it allows browser access. No cookies.
+    const response = await request(url, { credentials: 'omit' });
+    if (!response.ok) throw new Error('feed');
+    return parseFeed(await response.text());
+  } catch {
+    const response = await request('https://api.allorigins.win/raw?url=' + encodeURIComponent(url), { credentials: 'omit' });
+    if (!response.ok) throw new Error('No se pudo descargar el feed.');
+    return parseFeed(await response.text());
+  }
+}
 async function refreshRss() {
-  if (busyRss || !data.feeds.length) return;
+  if (busyRss) { rssRefreshPending = true; return; }
+  if (!data.feeds.length) return;
   busyRss = true; rssStatus = 'Actualizando lecturas…'; render();
   const feeds = data.feeds.map(f => ({ ...f }));
   const results = await Promise.allSettled(feeds.map(async f => {
-    const response = await request('https://api.allorigins.win/raw?url=' + encodeURIComponent(f.url));
-    if (!response.ok) throw new Error('feed');
-    const xml = new DOMParser().parseFromString(await response.text(), 'text/xml');
-    if (xml.querySelector('parsererror')) throw new Error('xml');
+    const xml = await fetchFeed(f.url);
     const title = xml.querySelector('channel > title, feed > title')?.textContent || new URL(f.url).hostname;
     return [...xml.querySelectorAll('item, entry')].slice(0, 20).map(item => ({ title: item.querySelector('title')?.textContent || 'Sin título', link: safeUrl((item.querySelector('link[rel="alternate"], link')?.getAttribute('href') || item.querySelector('link')?.textContent || '').trim()), date: item.querySelector('pubDate, published, updated')?.textContent || '', source: title, feed: f.url })).filter(item => item.link);
   }));
@@ -173,6 +288,7 @@ async function refreshRss() {
   }
   rssStatus = good.length === results.length ? '' : `${results.length - good.length} feed(s) sin actualizar. Datos guardados.`;
   busyRss = false; render();
+  if (rssRefreshPending) { rssRefreshPending = false; if (navigator.onLine) refreshRss(); }
 }
 async function channelStreams(id) {
   const streams = [];
@@ -189,7 +305,8 @@ async function channelStreams(id) {
 }
 async function refreshLive() {
   refreshProfiles();
-  if (busyLive || !data.channels.length || !data.holodexKey) return;
+  if (busyLive) { liveRefreshPending = true; return; }
+  if (!data.channels.length || !data.holodexKey) return;
   busyLive = true; liveStatus = 'Buscando directos…'; render();
   const channels = [...data.channels];
   const results = await Promise.allSettled(channels.map(channelStreams));
@@ -207,6 +324,7 @@ async function refreshLive() {
   }
   liveStatus = good.length === results.length ? '' : (results.find(r => r.status === 'rejected')?.reason?.message || 'No se pudo actualizar.') + ' Mostrando datos guardados.';
   busyLive = false; render();
+  if (liveRefreshPending) { liveRefreshPending = false; if (navigator.onLine) refreshLive(); }
 }
 function action(event) {
   const button = event.target.closest('[data-action]'); if (!button) return;
@@ -217,6 +335,17 @@ function action(event) {
   if (name === 'settings-rss') openWidgetSettings('rss');
   if (name === 'settings-live') openWidgetSettings('live');
   if (name === 'close-settings') settings.close();
+  if (name === 'refresh-directory') ensureDirectory(true);
+  if (name === 'search-page') { talentSearchPage += Number(button.dataset.delta); renderSearchResults(); }
+  if (name === 'follow-talent') {
+    const channel = directory.channels.find(channel => channel.id === button.dataset.channelId);
+    if (channel && !data.channels.includes(channel.id)) {
+      data.channels.push(channel.id);
+      const photo = safeImage(channel.photo || data.channelInfo[channel.id]?.photo);
+      data.channelInfo[channel.id] = normalizeProfile({ name: directoryName(channel), photo, updated: photo ? new Date().toISOString() : null }, channel.id);
+      persist(); render(); renderSettings(); refreshLive();
+    }
+  }
   if (name === 'page-rss' || name === 'page-live') { const type = name.slice(5); pages[type] += Number(button.dataset.delta); render(); }
   if (name === 'remove-feed') { const [removed] = data.feeds.splice(index, 1); data.articles = data.articles.filter(a => a.feed !== removed?.url); persist(); render(); renderSettings(); }
   if (name === 'remove-channel') { const [removed] = data.channels.splice(index, 1); delete data.channelInfo[removed]; data.streams = data.streams.filter(s => s.channelId && s.channelId !== removed); persist(); render(); renderSettings(); refreshLive(); }
@@ -242,14 +371,21 @@ export function initWidgets(root) {
   settings = document.createElement('dialog'); settings.id = 'widget-settings-dialog'; settings.setAttribute('aria-labelledby', 'widget-settings-title'); document.body.append(settings);
   host.addEventListener('click', action); settings.addEventListener('click', action);
   host.addEventListener('error', imageFailed, true); settings.addEventListener('error', imageFailed, true);
+  settings.addEventListener('input', event => {
+    if (event.target.name !== 'talent-query') return;
+    talentQuery = event.target.value; talentSearchPage = 0;
+    clearTimeout(talentSearchTimer);
+    talentSearchTimer = setTimeout(renderSearchResults, 250);
+  });
   settings.addEventListener('submit', event => {
     const form = event.target; if (!form.dataset.form) return; event.preventDefault();
     const fields = new FormData(form);
+    if (form.dataset.form === 'talent-search') { clearTimeout(talentSearchTimer); renderSearchResults(); return; }
     if (form.dataset.form === 'feed') { const url = safeUrl(fields.get('url')); if (url && !data.feeds.some(f => f.url === url)) data.feeds.push({ url }); persist(); render(); renderSettings(); refreshRss(); }
-    if (form.dataset.form === 'key') { data.holodexKey = String(fields.get('key')).trim(); persist(); render(); renderSettings(); refreshLive(); }
+    if (form.dataset.form === 'key') { data.holodexKey = String(fields.get('key')).trim(); persist(); render(); renderSettings(); refreshLive(); ensureDirectory(); }
     if (form.dataset.form === 'channel') { const id = String(fields.get('id')).trim(); if (channelPattern.test(id) && !data.channels.includes(id)) data.channels.push(id); persist(); render(); renderSettings(); refreshLive(); }
   });
-  window.addEventListener('offline', render); window.addEventListener('online', () => { render(); refreshProfiles(); });
+  window.addEventListener('offline', () => { render(); renderSearchResults(); }); window.addEventListener('online', () => { render(); refreshRss(); refreshLive(); if (settings?.open && settingsType === 'live') ensureDirectory(); });
   render(); clearInterval(timer); timer = setInterval(() => { if (!document.hidden && navigator.onLine) refreshLive(); else render(); }, 120000);
-  if (navigator.onLine) { refreshRss(); refreshLive(); }
+  if (navigator.onLine) requestAnimationFrame(() => setTimeout(() => { if (navigator.onLine) { refreshRss(); refreshLive(); } }, 0));
 }

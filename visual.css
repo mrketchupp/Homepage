@@ -128,3 +128,57 @@
 .stream-thumb.thumb-is-avatar { background: linear-gradient(130deg, color-mix(in srgb,var(--talent-color) 24%,#1a2036),#1a2036); }
 .stream-thumb.thumb-is-avatar img { width: 40px; height: 40px; left: 50%; top: 50%; transform: translate(-50%,-50%); border-radius: 50%; object-fit: cover; }
 @media (max-height:600px) { .stream-thumb.thumb-is-avatar img { width: 26px; height: 26px; } }
+/* Search people by name; identifiers stay behind the advanced control. */
+.talent-search-form { margin-top: 22px; }
+.talent-search-form .field { margin-bottom: 8px; }
+.talent-search-form [type=search] { width: 100%; }
+.talent-search-form > button { font-size: 11px; min-height: 29px; background: transparent; padding: 3px 8px; }
+.talent-search-results { margin: 10px 0 16px; }
+.talent-search-result { display: flex; align-items: center; gap: 11px; padding: 10px 0; border-bottom: 1px solid #ffffff0c; }
+.talent-search-result .talent-avatar { width: 34px; height: 34px; flex-shrink: 0; }
+.talent-search-copy { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 3px; }
+.talent-search-copy strong { font-size: 12px; font-weight: 500; color: var(--talent-color); }
+.talent-search-copy small { font-size: 10px; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
+.talent-search-result > button { min-height: 30px; font-size: 11px; padding: 4px 10px; }
+.talent-search-result > button:disabled { color: #a4dfc8; opacity: .75; background: #a4dfc80b; }
+.talent-search-pager { display: flex; justify-content: center; gap: 10px; align-items: center; margin: 12px 0; font-size: 11px; color: var(--muted); }
+.talent-search-pager button { width: 29px; min-height: 29px; padding: 0; }
+.talent-advanced { font-size: 11px; color: var(--muted); margin: 18px 0; }
+.talent-advanced summary { cursor: pointer; }
+.talent-advanced form { margin: 12px 0; }
+.talent-manage small { display: none; }
+/* The currency calculation stays inside the compact utility card. */
+.currency-body { justify-content: center; gap: 4px; }
+.currency-form { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
+.currency-amount-row, .currency-pair { display: grid; align-items: center; gap: 6px; }
+.currency-amount-row { grid-template-columns: minmax(0,1fr) 30px; }
+.currency-amount { min-width: 0; }
+.currency-amount input { width: 100%; min-height: 31px; height: 31px; padding: 4px 9px; font-size: 16px; background: #a4d9c708; border-color: #a4d9c72b; }
+.currency-refresh, .currency-swap { width: 30px; height: 30px; min-height: 30px; padding: 5px; color: #a4d9c7; }
+.currency-refresh svg, .currency-swap svg { width: 15px; height: 15px; }
+.currency-pair { grid-template-columns: minmax(0,1fr) 24px minmax(0,1fr); }
+.currency-pair label { min-width: 0; }
+.currency-pair select { min-height: 29px; height: 29px; width: 100%; font-size: 11px; padding: 3px 6px; }
+.currency-swap { width: 24px; border-color: transparent; background: transparent; }
+.currency-output { display: flex; flex-direction: column; gap: 2px; margin-top: 3px; }
+.currency-output strong { font-size: 23px; font-weight: 500; letter-spacing: -.6px; line-height: 1.15; color: #b8e9d7; }
+.currency-output small { font-size: 9px; color: #a4bac1; }
+.currency-meta { min-height: 13px; font-size: 9px; margin: 3px 0 0; line-height: 1.3; }
+.currency-footer { gap: 10px; }
+.currency-footer .text-link { width: auto; font-size: 10px; gap: 5px; }
+.currency-footer > span { text-align: right; font-size: 8px; color: #9dacbb; }
+.currency-refresh.is-loading svg { animation: rotate 1.5s linear infinite; }
+@media (max-width:759px) and (min-height:701px) { .currency-form { gap: 10px; } .currency-output { margin-top: 14px; } .currency-output strong { font-size: 33px; } .currency-body { gap: 9px; } }
+@media (max-height:600px) {
+  .currency-body { gap: 2px; }
+  .currency-form { display: grid; grid-template-columns: minmax(0,.85fr) minmax(0,1.15fr); align-items: center; gap: 6px; margin-top: 4px; }
+  .currency-amount-row { grid-template-columns: minmax(0,1fr) 26px; gap: 3px; }
+  .currency-amount input { min-height: 27px; height: 27px; font-size: 14px; padding: 3px 5px; }
+  .currency-refresh { width: 26px; height: 26px; min-height: 26px; }
+  .currency-pair { grid-template-columns: minmax(0,1fr) 20px minmax(0,1fr); gap: 2px; }
+  .currency-pair select { font-size: 10px; padding: 1px 3px; min-height: 27px; height: 27px; }
+  .currency-swap { width: 20px; height: 26px; min-height: 26px; padding: 1px; }
+  .currency-output { flex-direction: row; align-items: baseline; gap: 9px; margin-top: 2px; }
+  .currency-output strong { font-size: 20px; }
+}
+@media (prefers-reduced-motion:reduce) { .currency-refresh.is-loading svg { animation: none; } }

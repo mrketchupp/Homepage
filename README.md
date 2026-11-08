@@ -1,57 +1,75 @@
 # Inicio
 
-Una página de inicio personal, ligera y adaptable, con favoritos, RSS, seguimiento de directos y búsqueda con motores centrados en la privacidad.
+Una página de inicio personal, rápida y adaptable: favoritos, buscadores centrados en privacidad, lecturas RSS, directos de Hololive y conversión de divisas de Mastercard.
 
-## Uso local
+## Ejecutar
 
-Sirve esta carpeta mediante HTTP, por ejemplo `python3 -m http.server 8000`, y abre `http://localhost:8000`. Los módulos y el almacenamiento offline no funcionan correctamente al abrir el archivo directamente. Para usarla en otros dispositivos es necesario alojarla en una dirección HTTPS. Visítala una vez con conexión para guardar la aplicación en el navegador; después podrá abrirse sin conexión mientras el navegador conserve su caché. El modo privado y la limpieza de datos pueden eliminarla.
+Desde la raíz del repositorio:
 
-Los marcadores y ajustes se guardan en cada navegador. Utiliza Ajustes → Exportar datos e Importar datos para trasladarlos. Las búsquedas y enlaces necesitan conexión. La disponibilidad como página de inicio o nueva pestaña depende de cada navegador.
+```sh
+python3 server.py
+```
+
+Abre `http://localhost:8000`. El servidor usa solo la biblioteca estándar de Python y sirve tanto la web como `/api/currency`, necesario para la conversión integrada. Opcionalmente admite `--port 8001` y `--bind 127.0.0.1`.
+
+La interfaz también se puede servir como archivos estáticos con `python3 -m http.server 8000`, pero ese servidor no ofrece la conversión: el widget conserva el enlace al conversor oficial. GitHub Pages tampoco ejecuta `server.py`. Para otros dispositivos hace falta alojar la web en HTTPS; el servidor local no incorpora HTTPS por sí mismo.
+
+No abras `index.html` mediante `file://`: los módulos y el service worker necesitan HTTP local o HTTPS.
+
+## Arranque rápido y offline
+
+La primera visita requiere conexión para instalar la aplicación. Después, el service worker entrega primero la interfaz y los archivos guardados, sin esperar a la red. Favoritos, ajustes y datos locales se muestran de inmediato; las consultas de internet comienzan después del primer pintado y actualizan los widgets en segundo plano.
+
+Las nuevas versiones de la aplicación se precargan al instalar una nueva versión del service worker. Las respuestas de las API no forman parte de esa caché: cada módulo conserva y etiqueta sus propios datos guardados. Si el navegador elimina su caché o sus datos, habrá que descargar la aplicación otra vez.
+
+La prueba con el origen retrasado cuatro segundos mostró la página instalada en unos 109 ms en el entorno de prueba; no es una garantía de tiempo para todos los dispositivos. Se comprobó también la reapertura offline. Los detalles están en [docs/OFFLINE-AND-CURRENCY.md](docs/OFFLINE-AND-CURRENCY.md).
 
 ## Una pantalla
 
-La vista principal ocupa la pantalla disponible sin desplazamiento de página. En escritorio muestra las tarjetas RSS, directos y divisas en un panel compacto de hasta 280 px de alto, que se adapta al espacio disponible. En pantallas pequeñas puedes cambiar de widget mediante pestañas. Los favoritos tienen una fila de hasta seis elementos en escritorio y dos filas de cuatro en móvil cuando el alto supera 520 px: caben ocho favoritos antes de paginar. En pantallas bajas se conserva una fila. Las listas de lecturas y directos también se reparten en páginas según el espacio disponible, con controles para avanzar y retroceder. La configuración se abre en ventanas modales, cuyo contenido sí puede desplazarse si lo necesita.
+La vista principal ocupa la pantalla disponible sin scroll. En escritorio muestra tres widgets en un panel compacto de hasta 280 px de alto. En móvil se cambia de widget mediante pestañas. Los favoritos muestran hasta seis por fila en escritorio y ocho en dos filas de cuatro en móvil con más de 520 px de alto; después se pagina. Las pantallas bajas conservan una fila. Las listas se paginan según el espacio disponible. La configuración abre modales que pueden tener scroll interno.
 
-La interfaz usa iconos SVG y respeta la preferencia del sistema de reducir movimiento.
+Los widgets siguen siendo fijos: todavía no se pueden añadir, desactivar ni reordenar. Las pestañas seleccionan la tarjeta visible sin desactivarla.
+
+## Favoritos, búsqueda y datos
+
+Puedes añadir y eliminar favoritos y elegir Startpage, Ecosia, DuckDuckGo o Brave para buscar en internet. Los marcadores, ajustes y datos se guardan en cada navegador. Ajustes → Exportar datos e Importar datos permite trasladar favoritos, configuración de widgets y del fondo; la clave Holodex queda excluida. La sincronización automática no está implementada.
+
+Las opciones y cotizaciones de divisas y el catálogo derivado de Holodex aún no se incluyen en esas copias: cada navegador los conserva por separado. La posibilidad de usar la web como inicio, aplicación instalada o nueva pestaña depende del navegador y del sistema.
+
+## Seguir talentos por nombre
+
+Abre Ajustes → Conectar Holodex, guarda tu clave personal y escribe el nombre del talento. El buscador consulta un catálogo Hololive de Holodex y permite seleccionar el canal por su nombre y foto. El ID se guarda internamente: no hace falta conocerlo. La entrada manual por ID sigue disponible como opción avanzada.
+
+El catálogo se guarda durante 24 horas para buscar sin nuevas peticiones por cada tecla y seguir buscando offline después de haberlo descargado. Reconoce nombres ingleses, japoneses y variantes sin acentos; las búsquedas como «calliope morí», «Korone» o «Kronii» se comprobaron con el directorio real. La consulta realizada el 8 de noviembre de 2026 a las 22:16 UTC devolvió 138 canales. Ese conteo puede cambiar.
+
+La agenda consulta eventos en vivo y próximos siete días por canal, al abrir, manualmente, al recuperar conexión y cada dos minutos mientras la página está visible. Los datos guardados aparecen primero. Los avisos solo se muestran dentro de la página, sin notificaciones de fondo.
+
+Los avatares proceden de Holodex y las miniaturas de imágenes públicas de YouTube. Un círculo rojo luminoso identifica una emisión activa; un reloj identifica las próximas. Los colores de Calliope, Korone y Kronii son decisiones visuales del proyecto. Sin conexión, con error o con datos antiguos, se muestra el estado guardado en gris. Hay etiquetas accesibles y soporte de movimiento reducido.
+
+Pulsar un directo abre su vídeo en YouTube en una pestaña nueva. Pulsar un avatar de la tira abre el canal de YouTube. Si falla una miniatura se usa el avatar; si tampoco está disponible, iniciales o un icono. Las imágenes descargadas pueden funcionar offline mientras permanezcan en la caché limitada a 60 imágenes. Las pruebas y sus límites están en [docs/HOLODEX.md](docs/HOLODEX.md).
+
+## RSS
+
+En Gestionar feeds, pega la **URL del feed RSS o Atom**, añade el feed y listo. La portada de un sitio no equivale a su feed. Por ejemplo, NASA publica `https://www.nasa.gov/feed/`. El widget descarga titulares, fuente, fecha y enlace al artículo original; no guarda los artículos completos.
+
+Se actualiza al abrir, al pulsar actualizar y al recuperar conexión. Los últimos titulares quedan guardados para consultarlos offline. Se intenta leer el feed directamente sin cookies. Si el sitio impide el acceso desde el navegador, se usa AllOrigins, un intermediario público que recibe la dirección; utiliza solo feeds públicos. Si el feed o el intermediario falla, se conservan los resultados anteriores. NASA se comprobó de extremo a extremo en Chromium: se añadieron diez publicaciones reales y se conservaron offline. El proxy respondió HTTP 200 en una prueba de servidor, pero agotó el tiempo en otra prueba de navegador; por eso se prioriza la lectura directa cuando el feed lo permite.
+
+## Divisas dentro de la página
+
+El widget permite indicar importe, elegir las divisas y calcular con una cotización de Mastercard. `server.py` consulta el servicio público usado por la web oficial; necesita el backend porque ese servicio no permite la consulta directa desde esta página mediante CORS y la web oficial no se puede incrustar como iframe.
+
+El importe se calcula en el navegador. El servidor consulta siempre una unidad y comisión bancaria cero; no envía tu importe a Mastercard. El resultado es una estimación sin comisión bancaria y muestra la fecha real del tipo. No garantiza el cargo final de tu banco. Los tipos guardados permiten reutilizar una cotización offline; no se inventan tipos para pares sin datos.
+
+El servidor guarda hasta 40 pares durante una hora y el navegador conserva hasta 40 pares, renovándolos tras 24 horas cuando haya conexión. Si el backend no está disponible, permanece el enlace al conversor oficial. El endpoint público puede cambiar. Consulta [docs/OFFLINE-AND-CURRENCY.md](docs/OFFLINE-AND-CURRENCY.md) para despliegue, cachés y alcance.
 
 ## Fondo
 
-La imagen compartida por el usuario está incluida como fondo de prueba en `assets/background.jpg`, activada por defecto y disponible offline después de la primera carga. En Ajustes → Fondo puedes alternar entre la imagen y el degradado, ajustar el oscurecimiento (20–85 %), el desenfoque (0–12 px) y el encuadre horizontal y vertical (0–100 %), o restablecer los valores iniciales.
+La imagen compartida está en `assets/background.jpg`. En Ajustes → Fondo de pantalla puedes alternar imagen/degradado, oscurecimiento, desenfoque y encuadre. Los ajustes se aplican y guardan al momento, y se incluyen en la copia JSON. La imagen sigue siendo un archivo fijo: todavía no se puede sustituir desde la interfaz.
 
-Los controles se aplican al momento y se guardan en cada navegador. Sus valores se incluyen en las copias JSON; las copias anteriores siguen siendo compatibles. La imagen es un archivo fijo del proyecto: todavía no se puede sustituir desde la interfaz.
+## Estado y continuidad
 
-## Widgets
+Consulta [docs/ROADMAP.md](docs/ROADMAP.md) para lo implementado y pendiente, [AGENTS.md](AGENTS.md) para futuras sesiones y [docs/HOLODEX.md](docs/HOLODEX.md) para las capturas y verificaciones visuales. La prueba del indicador rojo está identificada como simulación; las capturas con datos reales tienen fecha. No contienen la clave.
 
-Los feeds RSS se consultan mediante un intermediario público, que recibe la URL del feed; no añadas feeds privados. Las actualizaciones requieren conexión y dependen de la disponibilidad de ese servicio. Los datos descargados se conservan localmente.
+Se verificaron la interfaz de conversión, la carga real de RSS, las búsquedas de talentos, las imágenes de los perfiles y el arranque con red lenta. Siguen pendientes las pruebas en Safari/macOS y Brave/iOS/Android.
 
-El seguimiento de directos utiliza Holodex y requiere una clave API propia y los identificadores de los canales de YouTube. La consulta se realiza por canal y pagina los resultados. Los avisos se muestran dentro de la página mientras está abierta; no son notificaciones en segundo plano. La clave se guarda en el navegador y no se incluye en las copias de seguridad ni en el código del proyecto.
-
-El enlace de divisas abre el conversor oficial de Mastercard; necesita conexión. No se calculan tipos de cambio sin acceso autorizado a la API oficial.
-
-### Qué muestra el widget de directos
-
-La agenda muestra avatares de los talentos y miniaturas de los vídeos, además del título, canal y fecha y hora de inicio en la zona horaria del navegador. Un círculo rojo luminoso y el texto «Ahora» identifican los directos activos; un reloj identifica los próximos. Las emisiones activas se ordenan primero. Los nombres y estados conservan etiquetas accesibles: no dependen solo del color. La tarjeta indica última actualización, errores y paginación. No muestra espectadores, duración ni descripción.
-
-Los acentos de Mori Calliope son rosas, los de Korone ámbar y los de Kronii azules; otros talentos reciben un color estable de la paleta. Son decisiones visuales del proyecto. La tira de avatares muestra hasta cinco talentos y un acceso al resto; en pantallas de 600 px de alto o menos se oculta para dejar sitio a los directos. La configuración sigue mostrando todos los talentos con su nombre y avatar.
-
-Los perfiles se obtienen del campo `photo` de Holodex y se guardan localmente en `channelInfo` durante 24 horas antes de renovar la consulta. Las miniaturas proceden de las imágenes públicas de YouTube. Se utiliza la misma clave Holodex, sin otra API con credenciales. Las imágenes requieren conexión para descargarse por primera vez; después pueden estar disponibles offline mientras permanezcan en la caché limitada a 60 imágenes. Si fallan, aparecen iniciales o un icono de reproducción.
-
-Sin conexión, con una actualización fallida o con datos de más de cinco minutos, el estado se presenta en gris como guardado/sin verificar y se retira el resplandor rojo. RSS comparte iconos y señales visuales de carga, actualización correcta, advertencia y desconexión. Las animaciones respetan la preferencia de movimiento reducido.
-
-Pulsar un directo abre su página de **YouTube en una nueva pestaña**. Holodex proporciona los datos de la agenda; el enlace «Ir a Holodex» solo aparece en la configuración. Con la página visible y conexión, la agenda se consulta cada dos minutos; también se puede actualizar manualmente. Los avisos de nuevos directos aparecen dentro del sitio.
-
-Los tres widgets actuales son fijos: todavía no hay un catálogo para añadir otros ni controles para activar, desactivar o reordenar tarjetas. Las pestañas de móvil cambian cuál se ve, sin desactivar el widget ni borrar sus datos.
-
-## Estado y siguientes pasos
-
-Esta es una primera versión. Ya incluye favoritos sencillos (sin carpetas ni edición), buscador, widgets de RSS y directos, enlace al conversor de Mastercard y copia de seguridad manual. Los widgets todavía no se pueden reordenar. La personalización del fondo se complementa con la identidad visual de los talentos y los estados de los widgets; los colores de talento todavía no son configurables. Consulta [docs/ROADMAP.md](docs/ROADMAP.md) para el plan y las limitaciones conocidas, y [AGENTS.md](AGENTS.md) para orientaciones destinadas a futuros colaboradores y modelos.
-
-Se han comprobado en Chromium la carga, la persistencia de favoritos, la reapertura sin conexión tras instalar la caché, la paginación de lecturas y la configuración modal. El widget de Holodex cargó datos reales en Chromium con una credencial temporal de prueba. Se verificó que las listas y pestañas caben sin scroll desde 320×568 hasta escritorio, incluida orientación horizontal. La clave debe introducirse una vez por navegador en Ajustes → Conectar Holodex; nunca está incluida en el código ni en las copias. Aún deben probarse Safari en macOS y Brave en iOS y Android, además de feeds RSS reales y la transición de un directo a estado en vivo.
-
-La revisión visual del nuevo fondo en Chromium incluye capturas y ocho favoritos visibles en móvil sin controles de paginación. También han pasado las pruebas de tamaños desde 320×568 hasta 1440×900, incluida orientación horizontal, con listas vacías y pobladas sin desbordamientos. Se comprobaron los controles del fondo, su persistencia y exportación, y la disponibilidad offline de la imagen.
-
-La prueba con Mori Calliope, Inugami Korone y Ouro Kronii está documentada en [docs/HOLODEX.md](docs/HOLODEX.md), con capturas actuales y resultados fechados.
-
-La revisión de avatares, miniaturas y estados visuales está en validación. Sus pruebas y capturas deben actualizarse en [docs/HOLODEX.md](docs/HOLODEX.md) al completar la revisión; los resultados anteriores no sustituyen esa comprobación.
-
-Las [capturas actuales](docs/HOLODEX.md#capturas-actuales) muestran avatares reales. En el entorno de pruebas las miniaturas de YouTube están bloqueadas, por lo que aparece la alternativa del avatar. La demostración del indicador rojo está marcada como simulación; los estados reales dependen de la última respuesta de Holodex.
+[Capturas y resultados de la revisión de búsqueda, arranque rápido, RSS y conversión](docs/OFFLINE-AND-CURRENCY.md#resultados-integrados-de-esta-revisión).

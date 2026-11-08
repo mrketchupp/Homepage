@@ -33,7 +33,15 @@ Se verificó la identidad de los canales mediante la API de Holodex antes de pro
 | Inugami Korone | `UChAnqc_AY5_I3Px5dig3X1Q` |
 | Ouro Kronii | `UCmbs8T6MWqUHP1tIQvSgKrg` |
 
-Para reproducir la configuración, abre Ajustes → Conectar Holodex, guarda tu clave API personal y añade estos IDs mediante «Seguir canal». La selección usada en las capturas corresponde a una sesión temporal de prueba; no está impuesta como configuración predeterminada para todos los visitantes. Nunca introduzcas la clave en los archivos del proyecto ni en esta documentación.
+Para reproducir la configuración, abre Ajustes → Conectar Holodex, guarda tu clave API personal y busca «Calliope», «Korone» o «Kronii» por nombre. Al pulsar «Seguir», la aplicación guarda el ID y el perfil correspondientes sin que tengas que conocer el identificador. La entrada manual por ID sigue disponible dentro de la opción avanzada. La selección usada en las capturas corresponde a una sesión temporal de prueba; no está impuesta como configuración predeterminada para todos los visitantes. Nunca introduzcas la clave en los archivos del proyecto ni en esta documentación.
+
+## Búsqueda por nombre
+
+El directorio se consulta mediante `/channels?type=vtuber&org=Hololive&limit=100&offset=...`, con la misma clave. Se guarda 24 horas en `inicio.holodex-directory.v1`; las pulsaciones filtran localmente nombres ingleses, nativos y alias disponibles, ignorando acentos y el orden de los términos. Los resultados se paginan en grupos de seis y los ya seguidos se identifican como tales. El catálogo guardado se puede buscar sin conexión. Es un dato público derivado y no se incluye en la copia JSON ni contiene la clave.
+
+La consulta real del 8 de noviembre de 2026 a las 22:16 UTC devolvió 138 canales. Se comprobaron búsquedas como «calliope morí», «Korone», «Kronii» y japonés, el guardado del ID interno y el uso offline. El número de canales y sus nombres pueden cambiar con el directorio de Holodex.
+
+La interfaz y los datos locales se muestran primero; las consultas de agenda y perfiles se difieren hasta después del primer pintado y se reanudan al recuperar conexión. El arranque instalado usa caché primero, tal como explica [OFFLINE-AND-CURRENCY.md](OFFLINE-AND-CURRENCY.md).
 
 ## Resultados anteriores a la revisión visual
 
@@ -65,7 +73,7 @@ Consulta real en Chromium el 8 de noviembre de 2026, a las 21:56 UTC:
 
 La caché externa se comprobó además con pruebas aisladas del worker: límite de 60 entradas, respuestas opacas, alternativa offline, limpieza de versiones y exclusión de solicitudes autenticadas. La prueba real no demuestra que las miniaturas estén accesibles desde todos los navegadores o redes. Siguen pendientes Safari/macOS y Brave/iOS/Android, y la transición real de una emisión de programada a en vivo.
 
-## Capturas actuales
+## Capturas de la revisión visual de las 21:56 UTC
 
 Las capturas contienen ocho favoritos de ejemplo y datos reales de la consulta de las 21:56 UTC, salvo la demostración indicada. No contienen la clave.
 
@@ -81,3 +89,5 @@ Las capturas contienen ocho favoritos de ejemplo y datos reales de la consulta d
 - Distinguir con más detalle «sin próximos eventos» de errores de consulta por canal. Los nombres y avatares en la configuración ya están implementados.
 
 Estas mejoras todavía no están implementadas.
+
+La revisión posterior de búsqueda por nombre, conversión y RSS, con sus capturas actuales, está en [OFFLINE-AND-CURRENCY.md](OFFLINE-AND-CURRENCY.md). La búsqueda por nombre ya está implementada; la entrada manual por ID es solo avanzada.

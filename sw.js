@@ -1,8 +1,8 @@
-const CACHE = 'inicio-v4';
+const CACHE = 'inicio-v5';
 const IMAGE_CACHE = 'inicio-images-v1';
 const MAX_IMAGES = 60;
 const IMAGE_HOSTS = new Set(['i.ytimg.com', 'yt3.ggpht.com', 'yt3.googleusercontent.com']);
-const ASSETS = ['./', './index.html', './style.css', './visual.css', './app.js', './widgets.js', './manifest.webmanifest', './icon.svg', './background.js', './assets/background.jpg'];
+const ASSETS = ['./', './index.html', './style.css', './visual.css', './app.js', './widgets.js', './currency.js', './manifest.webmanifest', './icon.svg', './background.js', './assets/background.jpg'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
@@ -44,18 +44,27 @@ async function imageResponse(event) {
   }
 }
 
+// Serve the installed app before contacting the network. New deployments update
+// the versioned precache during service-worker installation, outside page startup.
 async function localResponse(event) {
   const request = event.request;
+  const cache = await caches.open(CACHE);
+  const url = new URL(request.url);
+  const shell = new URL('./', self.registration.scope);
+  const isShellNavigation = request.mode === 'navigate' &&
+    (url.pathname === shell.pathname || url.pathname === shell.pathname + 'index.html');
+  const cached = await cache.match(request, { ignoreSearch: isShellNavigation }) ||
+    (isShellNavigation ? await cache.match('./index.html') : undefined);
+  if (cached) return cached;
   try {
     const response = await fetch(request);
     if (response.ok) {
       const copy = response.clone();
-      event.waitUntil(caches.open(CACHE).then(cache => cache.put(request, copy)).catch(() => {}));
+      event.waitUntil(cache.put(request, copy).catch(() => {}));
     }
     return response;
   } catch {
-    const cache = await caches.open(CACHE);
-    return await cache.match(request) || (request.mode === 'navigate' ? await cache.match('./index.html') : null) || Response.error();
+    return (request.mode === 'navigate' ? await cache.match('./index.html') : null) || Response.error();
   }
 }
 
@@ -63,6 +72,8 @@ self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET' || request.headers.has('Authorization') || request.headers.has('X-APIKEY') || request.headers.has('X-API-Key')) return;
   const url = new URL(request.url);
+  // Live API results are managed by their modules, never by the app-shell cache.
+  if (url.origin === self.location.origin && url.pathname.startsWith('/api/')) return;
   if (url.origin === self.location.origin) {
     event.respondWith(localResponse(event));
   } else if (request.destination === 'image' && url.protocol === 'https:' && IMAGE_HOSTS.has(url.hostname)) {

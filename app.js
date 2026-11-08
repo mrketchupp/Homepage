@@ -1,3 +1,4 @@
+import { initCurrency } from './currency.js';
 import { initBackground, exportBackground, importBackground } from './background.js';
 import { initWidgets, exportWidgets, importWidgets, openWidgetSettings, setWidgetPageSize } from './widgets.js';
 
@@ -103,6 +104,7 @@ window.addEventListener('online', connection); window.addEventListener('offline'
 function date() { $('#date').textContent = new Intl.DateTimeFormat('es', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date()); }
 date(); setInterval(date, 60000);
 initWidgets($('#widgets'));
+initCurrency($('#exchange-panel'));
 const tabs = [...document.querySelectorAll('[data-tab]')];
 function selectTab(tab) {
   $('.dashboard').dataset.active = tab.dataset.tab;
@@ -157,4 +159,4 @@ $('#import').onchange = async event => {
   } catch { notify('No se pudo importar. Comprueba que sea una copia válida de Inicio.'); }
   event.target.value = '';
 };
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => {});
