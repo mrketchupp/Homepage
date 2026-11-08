@@ -66,6 +66,14 @@ El servidor guarda hasta 40 pares durante una hora y el navegador conserva hasta
 
 La imagen compartida está en `assets/background.jpg`. En Ajustes → Fondo de pantalla puedes alternar imagen/degradado, oscurecimiento, desenfoque y encuadre. Los ajustes se aplican y guardan al momento, y se incluyen en la copia JSON. La imagen sigue siendo un archivo fijo: todavía no se puede sustituir desde la interfaz.
 
+## Configuración Liquid Glass
+
+Las ventanas de ajustes, favoritos, talentos, RSS y fondo comparten una superficie translúcida con desenfoque, bordes luminosos, botones y foco coherentes con la página. Ajustes reúne Fondo de pantalla, Tus talentos y Tus lecturas, junto con las acciones de copia y una nota sobre el almacenamiento local.
+
+El panel de fondo mantiene la página visible para previsualizar sus cambios. Los campos, deslizadores e interruptor conservan controles nativos; en móvil se usan campos de texto de 16 px y controles más amplios. Hay una alternativa opaca si no se admite desenfoque o se solicita menos transparencia/más contraste, y las animaciones respetan movimiento reducido.
+
+La implementación está en `settings.css`, precargada por la caché `inicio-v6`. El alcance y la lista de comprobaciones de esta revisión están en [docs/SETTINGS-DESIGN.md](docs/SETTINGS-DESIGN.md); incluye las pruebas realizadas y las capturas actuales.
+
 ## Estado y continuidad
 
 Consulta [docs/ROADMAP.md](docs/ROADMAP.md) para lo implementado y pendiente, [AGENTS.md](AGENTS.md) para futuras sesiones y [docs/HOLODEX.md](docs/HOLODEX.md) para las capturas y verificaciones visuales. La prueba del indicador rojo está identificada como simulación; las capturas con datos reales tienen fecha. No contienen la clave.

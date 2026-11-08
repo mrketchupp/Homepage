@@ -5,11 +5,12 @@ Este documento distingue la implementación actual de las ideas futuras. No impl
 ## Implementado
 
 - Página estática adaptable con estética oscura inspirada en Liquid Glass, iconos SVG, estados visuales y soporte de movimiento reducido.
+- Configuración Liquid Glass compartida mediante `settings.css`, cargada tras el estilo visual y precargada offline: superficies translúcidas, desenfoque de 34 px, saturación, controles y foco coherentes; alternativa opaca sin soporte o con preferencias de menos transparencia/más contraste. Ajustes agrupa Fondo, Talentos, Lecturas y copias, y mantiene una nota de almacenamiento local. Los diálogos estáticos tienen nombre accesible y la importación conserva acceso de teclado.
 - Vista principal sin scroll de página: tres widgets en un panel compacto de hasta 280 px de alto en escritorio, ajustado al espacio disponible; pestañas en pantallas pequeñas. Favoritos con hasta seis elementos por fila en escritorio y ocho en dos filas de cuatro en móvil con más de 520 px de alto; en pantallas bajas se conserva una fila. Se pagina al superar esa capacidad y las listas de widgets también se adaptan al espacio. La configuración abre modales que sí admiten scroll interno.
 - Favoritos con alta y eliminación, buscadores Startpage, Ecosia, DuckDuckGo y Brave, fecha y estado de conexión.
 - Fondo de prueba con la imagen del usuario en `assets/background.jpg`, activado por defecto. Controles para alternar imagen/degradado, oscurecimiento 20–85 %, desenfoque 0–12 px, encuadre horizontal/vertical y restablecimiento; persistencia en `inicio.background.v1`.
 - Importación y exportación JSON local, con normalización de los elementos de widgets y ajustes opcionales del fondo compatibles con las copias existentes de versión 1. La clave de Holodex no se exporta.
-- Aplicación instalable con manifiesto y caché primero de recursos del mismo origen mediante service worker (`inicio-v5`), incluidos el módulo y la imagen del fondo. Los recursos instalados se muestran sin esperar la red, las nuevas versiones se precargan con el worker y las API quedan excluidas. Los módulos muestran datos locales antes de consultar online después del primer pintado. La primera visita requiere conexión; la caché depende del navegador.
+- Aplicación instalable con manifiesto y caché primero de recursos del mismo origen mediante service worker (`inicio-v6`), incluidos el módulo y la imagen del fondo. Los recursos instalados se muestran sin esperar la red, las nuevas versiones se precargan con el worker y las API quedan excluidas. Los módulos muestran datos locales antes de consultar online después del primer pintado. La primera visita requiere conexión; la caché depende del navegador.
 - RSS y Atom por URL de feed, con lectura directa sin cookies y AllOrigins como alternativa para CORS, con titulares guardados localmente y actualización al abrir, manualmente y al recuperar conexión. No descarga artículos completos.
 - Búsqueda de talentos por nombre desde el directorio Hololive de Holodex, con caché de 24 horas, búsqueda local sin peticiones por tecla y entrada manual avanzada. El ID se guarda internamente. Consulta de directos de YouTube de canales seleccionados mediante Holodex por canal y con paginación; aviso dentro de la página al detectar un directo nuevo durante una sesión abierta. Las peticiones usan un tiempo límite con `AbortController`.
 - Avatares de Holodex (`photo`) con perfiles locales `channelInfo` y TTL de 24 horas; miniaturas públicas de YouTube (`mqdefault.jpg`). No se requiere otra clave. La tira muestra hasta cinco talentos y acceso al resto, se oculta a alturas de 600 px o menos y la configuración conserva todos los nombres y avatares.
@@ -34,6 +35,10 @@ En Chromium se descargaron las fotos reales de los tres talentos y dos próximos
 ## Revisión de arranque, nombres y conversión
 
 La API real devolvió 138 canales Hololive a las 22:16 UTC del 8 de noviembre de 2026. Se comprobaron búsquedas por nombre, japonés y catálogo offline. El arranque instalado con el origen retrasado cuatro segundos mostró la vista en unos 109 ms y pasó también sin conexión. La interfaz cargó diez entradas reales de NASA por CORS directo y una cotización real de Mastercard, con cálculo local y datos guardados offline; las capturas y pruebas completas están en [OFFLINE-AND-CURRENCY.md](OFFLINE-AND-CURRENCY.md).
+
+## Revisión de configuración Liquid Glass
+
+La capa de configuración está implementada en `settings.css` y usa la caché `inicio-v6`. Se comprobaron en Chromium cuatro tamaños, ventanas secundarias, Escape y foco, exportación/importación, controles del fondo, movimiento reducido, contraste alto y apertura offline de los estilos. Los resultados, límites y cuatro capturas nuevas están en [SETTINGS-DESIGN.md](SETTINGS-DESIGN.md).
 
 ## Pendiente de verificar
 

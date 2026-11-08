@@ -86,6 +86,19 @@ $('#bookmark-form').onsubmit = event => {
   saveBookmarks(); event.currentTarget.reset(); bookmarkDialog.close(); notify('Favorito añadido');
 };
 $('#settings-open').onclick = () => $('#settings-dialog').showModal();
+// A child settings dialog can outlive the already closed main dialog.
+// Restore a visible trigger when its original opener is no longer visible.
+document.addEventListener('close', event => {
+  if (event.target.tagName !== 'DIALOG') return;
+  queueMicrotask(() => {
+    if (document.querySelector('dialog[open]')) return;
+    const focused = document.activeElement;
+    if (!focused || focused === document.body || focused.closest('dialog:not([open])')) {
+      $('#settings-open').focus({ preventScroll: true });
+    }
+  });
+}, true);
+
 $('#configure-live').onclick = () => { $('#settings-dialog').close(); openWidgetSettings('live'); };
 $('#configure-rss').onclick = () => { $('#settings-dialog').close(); openWidgetSettings('rss'); };
 const engine = $('#engine');

@@ -58,7 +58,7 @@ export function initBackground() {
   dialog.className = 'background-controls';
   dialog.setAttribute('aria-labelledby', 'background-title');
   dialog.innerHTML = `
-    <div class="dialog-head"><h2 id="background-title">Tu fondo</h2><button class="icon-button" type="button" data-background-close aria-label="Cerrar ajustes del fondo">×</button></div>
+    <div class="dialog-head"><div><span class="section-kicker">APARIENCIA</span><h2 id="background-title">Tu fondo</h2></div><button class="icon-button" type="button" data-background-close aria-label="Cerrar ajustes del fondo"><svg aria-hidden="true"><use href="#i-close"/></svg></button></div>
     <label class="background-toggle"><input id="wallpaper-enabled" type="checkbox"> Mostrar imagen de fondo</label>
     <p class="muted small">Ajusta la imagen para que tu espacio siga siendo fácil de leer. Al desactivarla, verás el fondo degradado.</p>
     <label class="field" for="wallpaper-dim"><span>Oscurecimiento <output for="wallpaper-dim" data-background-output="dim"></output></span><input id="wallpaper-dim" data-background-input="dim" type="range" min="20" max="85" step="1"></label>

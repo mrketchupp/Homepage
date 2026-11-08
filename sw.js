@@ -1,8 +1,8 @@
-const CACHE = 'inicio-v5';
+const CACHE = 'inicio-v6';
 const IMAGE_CACHE = 'inicio-images-v1';
 const MAX_IMAGES = 60;
 const IMAGE_HOSTS = new Set(['i.ytimg.com', 'yt3.ggpht.com', 'yt3.googleusercontent.com']);
-const ASSETS = ['./', './index.html', './style.css', './visual.css', './app.js', './widgets.js', './currency.js', './manifest.webmanifest', './icon.svg', './background.js', './assets/background.jpg'];
+const ASSETS = ['./', './index.html', './style.css', './visual.css', './settings.css', './app.js', './widgets.js', './currency.js', './manifest.webmanifest', './icon.svg', './background.js', './assets/background.jpg'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));

@@ -2,7 +2,7 @@
 
 ## Entrega inmediata de la aplicación
 
-El objetivo offline incluye abrir rápido aunque exista una conexión lenta. Después de la primera visita e instalación, `sw.js` entrega la interfaz desde `inicio-v5` antes de intentar la red. Precarga HTML, CSS, módulos, manifiesto, icono y fondo. El navegador puede instalar una nueva versión del worker y precargar una nueva caché; el arranque de una página ya instalada no espera esa descarga.
+El objetivo offline incluye abrir rápido aunque exista una conexión lenta. Después de la primera visita e instalación, `sw.js` entrega la interfaz desde `inicio-v6` antes de intentar la red. Precarga HTML, CSS, módulos, manifiesto, icono y fondo. El navegador puede instalar una nueva versión del worker y precargar una nueva caché; el arranque de una página ya instalada no espera esa descarga.
 
 La caché principal usa **caché primero**, no red primero. Al cambiar los recursos que forman la aplicación, actualiza el nombre de caché y la lista `ASSETS`. No uses la caché de recursos para guardar API, solicitudes autenticadas o datos de usuario. `/api/` se excluye explícitamente; las peticiones autenticadas de Holodex tampoco pasan por el almacenamiento del worker.
 
@@ -14,7 +14,7 @@ La primera instalación requiere conexión y debe completarse antes de esperar d
 
 | Datos | Dónde | Política |
 | --- | --- | --- |
-| Aplicación y fondo | Cache Storage `inicio-v5` | Caché primero; actualización con nueva versión del worker. |
+| Aplicación y fondo | Cache Storage `inicio-v6` | Caché primero; actualización con nueva versión del worker. |
 | Avatares e imágenes públicas | Cache Storage `inicio-images-v1` | Hasta 60 imágenes, hosts permitidos, sin credenciales. |
 | Favoritos y ajustes | `localStorage` | Persisten en cada navegador; copia JSON manual. |
 | Agenda y lecturas | `homepage.widgets.v1` | Datos locales primero; actualización online y marca de fecha/estado. |
