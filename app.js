@@ -1,4 +1,7 @@
+import { initBackground, exportBackground, importBackground } from './background.js';
 import { initWidgets, exportWidgets, importWidgets, openWidgetSettings, setWidgetPageSize } from './widgets.js';
+
+initBackground();
 
 const $ = selector => document.querySelector(selector);
 const bookmarkKey = 'inicio.bookmarks.v1';
@@ -19,6 +22,8 @@ function loadBookmarks() {
 let bookmarks = loadBookmarks();
 let bookmarkPage = 0;
 let bookmarkPageSize = 5;
+let bookmarkColumns = 5;
+let bookmarkRows = 1;
 const icon = name => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
 function notify(text) {
   $('#toast').textContent = text;
@@ -32,6 +37,9 @@ function saveBookmarks() {
 function renderBookmarks() {
   const list = $('#bookmarks');
   list.replaceChildren();
+  list.style.gridTemplateColumns = `repeat(${bookmarkColumns}, minmax(0, 1fr))`;
+  list.style.gridAutoFlow = 'row';
+  list.dataset.rows = String(bookmarkRows);
   const pageCount = Math.max(1, Math.ceil(bookmarks.length / bookmarkPageSize));
   bookmarkPage = Math.max(0, Math.min(bookmarkPage, pageCount - 1));
   const pageNav = $('#bookmark-pages');
@@ -55,7 +63,6 @@ function renderBookmarks() {
     const p = document.createElement('p'); p.className = 'empty'; p.textContent = 'Añade tus lugares favoritos.'; list.append(p); return;
   }
   const visible = bookmarks.slice(bookmarkPage * bookmarkPageSize, (bookmarkPage + 1) * bookmarkPageSize);
-  list.style.gridTemplateColumns = `repeat(${Math.max(visible.length, bookmarkPageSize)}, minmax(0, 1fr))`;
   visible.forEach((item, index) => {
     const wrap = document.createElement('div'); wrap.className = 'bookmark';
     const a = document.createElement('a'); a.href = safeUrl(item.url); a.title = item.name;
@@ -116,8 +123,13 @@ selectTab(tabs[0]);
 function fitLayout() {
   const mobile = window.innerWidth < 760;
   const width = $('.favorites-section').clientWidth;
-  const pageSize = Math.max(1, Math.min(6, Math.floor(width / (mobile ? 76 : 160))));
-  if (bookmarkPageSize !== pageSize) { bookmarkPageSize = pageSize; renderBookmarks(); }
+  const doubleRow = mobile && window.innerHeight > 520;
+  const columns = doubleRow ? 4 : Math.max(1, Math.min(6, Math.floor(width / (mobile ? 76 : 160))));
+  const rows = doubleRow ? 2 : 1;
+  const pageSize = columns * rows;
+  if (bookmarkPageSize !== pageSize || bookmarkColumns !== columns || bookmarkRows !== rows) {
+    bookmarkPageSize = pageSize; bookmarkColumns = columns; bookmarkRows = rows; renderBookmarks();
+  }
   const height = $('#widget-deck').clientHeight;
   const itemHeight = window.innerHeight <= 520 ? 60 : 78;
   const reserved = window.innerHeight <= 520 ? 100 : 155;
@@ -127,7 +139,7 @@ renderBookmarks();
 const observer = new ResizeObserver(fitLayout); observer.observe($('.shell')); observer.observe($('#widget-deck'));
 fitLayout();
 $('#export').onclick = () => {
-  const data = { version: 1, bookmarks, engine: engine.value, widgets: exportWidgets() };
+  const data = { version: 1, bookmarks, engine: engine.value, widgets: exportWidgets(), background: exportBackground() };
   const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
   const a = document.createElement('a'); a.href = url; a.download = 'inicio-copia.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
@@ -137,6 +149,7 @@ $('#import').onchange = async event => {
     const data = JSON.parse(await event.target.files[0].text());
     if (data.version !== 1 || !validBookmarks(data.bookmarks) || !data.widgets || typeof data.widgets !== 'object' || Array.isArray(data.widgets)) throw new Error();
     importWidgets(data.widgets);
+    importBackground(data.background);
     bookmarks = data.bookmarks; bookmarkPage = 0; saveBookmarks();
     if ([...engine.options].some(option => option.value === data.engine)) { engine.value = data.engine; localStorage.setItem('inicio.engine', engine.value); }
     $('#settings-dialog').close(); notify('Copia importada');
